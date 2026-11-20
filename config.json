@@ -1,0 +1,79 @@
+{
+  "_help": "See README.md for every option. Run with --monitor to see axis values and button numbers.",
+  "active_profile": "gamepad",
+
+  "auto_profiles": {
+    "_help": "Switch profile when a program's window is in front. Use the .exe name.",
+    "enabled": false,
+    "apps": {
+      "examplegame.exe": "flight"
+    },
+    "fallback": null
+  },
+
+  "profiles": {
+    "gamepad": {
+      "sensitivity": 1.0,
+      "sens_step": 0.1,
+      "smoothing": 0.0,
+      "dominant_axis": false,
+      "axes": {
+        "tx": { "target": "lx",       "invert": false, "deadzone": 0.05, "curve": 1.5, "sensitivity": 1.0 },
+        "ty": { "target": "ly",       "invert": true,  "deadzone": 0.05, "curve": 1.5, "sensitivity": 1.0 },
+        "tz": { "target": "triggers", "invert": true,  "deadzone": 0.08, "curve": 1.5, "sensitivity": 1.0 },
+        "rx": { "target": "ry",       "invert": false, "deadzone": 0.05, "curve": 1.5, "sensitivity": 1.0 },
+        "ry": { "target": "buttons",  "pos": "pad:DPAD_RIGHT", "neg": "pad:DPAD_LEFT", "threshold": 0.5 },
+        "rz": { "target": "rx",       "invert": true,  "deadzone": 0.05, "curve": 1.5, "sensitivity": 1.0 }
+      },
+      "buttons": {
+        "_help": "SpaceMouse Pro numbers: 1 Menu, 2 Fit, 3 T, 5 R, 6 F, 9 Roll, 13-16 keys 1-4, 23 Esc, 24 Alt, 25 Shift, 26 Ctrl, 27 Lock",
+        "13": "pad:A",
+        "14": "pad:B",
+        "15": "pad:X",
+        "16": "pad:Y",
+        "1":  "pad:START",
+        "2":  "pad:BACK",
+        "3":  "pad:LB",
+        "5":  "pad:RB",
+        "6":  "pad:LS",
+        "9":  "pad:RS",
+        "23": "action:toggle_pause",
+        "24": "action:sens_down",
+        "25": "action:sens_up",
+        "26": "action:next_profile",
+        "27": "action:toggle_rotation"
+      }
+    },
+
+    "flight": {
+      "inherits": "gamepad",
+      "sensitivity": 0.8,
+      "smoothing": 0.3,
+      "axes": {
+        "tz": { "curve": 2.0 }
+      }
+    },
+
+    "keyboard_mouse": {
+      "sensitivity": 1.0,
+      "mouse_speed": 1500,
+      "axes": {
+        "tx": { "target": "buttons", "pos": "key:D", "neg": "key:A", "threshold": 0.3 },
+        "ty": { "target": "buttons", "pos": "key:S", "neg": "key:W", "threshold": 0.3 },
+        "tz": { "target": "buttons", "pos": "key:LCTRL", "neg": "key:SPACE", "threshold": 0.4 },
+        "rx": { "target": "mouse_y", "invert": false, "deadzone": 0.05, "curve": 1.5 },
+        "ry": { "target": "none" },
+        "rz": { "target": "mouse_x", "invert": true,  "deadzone": 0.05, "curve": 1.5 }
+      },
+      "buttons": {
+        "13": "mouse:LEFT",
+        "14": "mouse:RIGHT",
+        "15": "key:R",
+        "16": "key:E",
+        "25": "toggle:key:LSHIFT",
+        "23": "action:toggle_pause",
+        "26": "action:next_profile"
+      }
+    }
+  }
+}
