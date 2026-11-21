@@ -21,7 +21,7 @@ import time
 
 import hid
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 VENDOR_IDS = (0x046D, 0x256F)          # old Logitech-era and current 3Dconnexion IDs
 AXES = ("tx", "ty", "tz", "rx", "ry", "rz")
@@ -372,6 +372,11 @@ class VirtualPad:
         import vgamepad as vg
         self.pad = vg.VX360Gamepad()
         self.btn = {k: getattr(vg.XUSB_BUTTON, "XUSB_GAMEPAD_" + v) for k, v in self.NAMES.items()}
+        # A new pad reads off-centre sticks in XInput until its first real update
+        # (measured), which a game's binding screen can mistake for input. A plain
+        # centred update is ignored as "no change", so nudge one stick, then centre.
+        self.apply(dict(lx=0.001, ly=0.0, rx=0.0, ry=0.0, lt=0.0, rt=0.0), ())
+        self.neutral()
 
     def apply(self, sticks, pressed):
         p = self.pad
@@ -384,8 +389,8 @@ class VirtualPad:
         p.update()
 
     def neutral(self):
-        self.pad.reset()
-        self.pad.update()
+        # Centre every axis and release every button.
+        self.apply(dict(lx=0.0, ly=0.0, rx=0.0, ry=0.0, lt=0.0, rt=0.0), ())
 
 
 class Outputs:
@@ -598,6 +603,91 @@ class Engine:
             self.profile.name, self.sens_mult, flag, ax, st, btn, out)
 
 
+# ----------------------------------------------------------- bind helper ----
+
+ZERO_STICKS = dict(lx=0.0, ly=0.0, rx=0.0, ry=0.0, lt=0.0, rt=0.0)
+
+BIND_HELP = """Bind helper: sends ONE clean input so a game's key-binding screen can catch it.
+The SpaceMouse is ignored while this runs, so nothing else gets in the way.
+
+  Type what to send, press Enter, then switch to the game's "press a key" box
+  before the countdown ends.
+
+  Sticks:    lx+ lx- ly+ ly- rx+ rx- ry+ ry-   (left/right stick, direction)
+  Triggers:  lt rt
+  Buttons:   A B X Y LB RB LS RS START BACK DPAD_UP DPAD_DOWN DPAD_LEFT DPAD_RIGHT
+  Keys:      key:W  key:CTRL+C   Mouse: mouse:LEFT
+  Repeat the last one: just press Enter.   Quit: q
+"""
+
+
+def parse_bind_target(text):
+    """'lx+' / 'rt' -> axis pulse; anything else -> a binding (pad/key/mouse)."""
+    t = text.strip().lower()
+    if len(t) == 3 and t[:2] in STICK_TARGETS and t[2] in "+-":
+        return (t[:2], 1.0 if t[2] == "+" else -1.0), frozenset()
+    if t in ("lt", "rt"):
+        return (t, 1.0), frozenset()
+    b = parse_binding(text)
+    if b.actions:
+        raise ValueError("actions can't be sent to a game")
+    return None, b.atoms
+
+
+def send_pulse(outputs, axis, atoms, hold):
+    """Move one axis smoothly out and back, or press and release the atoms."""
+    if axis:
+        name, sign = axis
+        steps = 15
+        for i in list(range(1, steps + 1)) + [steps] * int(hold / 0.02) + list(range(steps, -1, -1)):
+            sticks = dict(ZERO_STICKS)
+            sticks[name] = sign * i / steps
+            outputs.apply(sticks, set(), [0.0, 0.0])
+            time.sleep(0.02)
+    else:
+        outputs.apply(dict(ZERO_STICKS), set(atoms), [0.0, 0.0])
+        time.sleep(hold)
+    outputs.neutral()
+
+
+def bind_helper(delay, hold, want_pad, read_line=input):
+    print(BIND_HELP)
+    outputs = Outputs(want_pad=want_pad)
+    last = None
+    try:
+        while True:
+            try:
+                text = read_line("bind> ").strip()
+            except EOFError:
+                break
+            if text.lower() in ("q", "quit", "exit"):
+                break
+            if not text:
+                if not last:
+                    continue
+                text = last
+            try:
+                axis, atoms = parse_bind_target(text)
+            except ValueError as e:
+                print("  " + str(e))
+                continue
+            if any(a[0] == "pad" for a in atoms) or axis:
+                if not outputs.pad:
+                    print("  No virtual controller, can't send controller input.")
+                    continue
+            last = text
+            for i in range(int(delay), 0, -1):
+                print("\r  Switch to the game now... %d " % i, end="", flush=True)
+                time.sleep(1.0)
+            print("\r  Sending %s                  " % text)
+            send_pulse(outputs, axis, atoms, hold)
+            print("  Done.")
+    except KeyboardInterrupt:
+        print()
+    finally:
+        outputs.neutral()
+
+
 # ------------------------------------------------------------------ main ----
 
 def main():
@@ -608,12 +698,19 @@ def main():
     ap.add_argument("--no-pad", action="store_true", help="don't create the virtual controller")
     ap.add_argument("--quiet", action="store_true", help="no live status line")
     ap.add_argument("--list-keys", action="store_true", help="print usable key names and exit")
+    ap.add_argument("--bind", action="store_true",
+                    help="bind helper: send single clean inputs for a game's key-binding screen")
+    ap.add_argument("--bind-delay", type=float, default=5, help="seconds to switch to the game (default 5)")
+    ap.add_argument("--bind-hold", type=float, default=0.5, help="seconds to hold the input (default 0.5)")
     ap.add_argument("--version", action="version", version=__version__)
     args = ap.parse_args()
 
     if args.list_keys:
         print(" ".join(SCANCODES))
         print("Aliases: " + ", ".join("%s=%s" % kv for kv in KEY_ALIASES.items()))
+        return
+    if args.bind:
+        bind_helper(args.bind_delay, args.bind_hold, want_pad=not args.no_pad)
         return
 
     cfg = Config(args.config)

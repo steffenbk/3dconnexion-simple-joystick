@@ -40,7 +40,26 @@ You can leave the 3Dconnexion software (3DxWare) installed. The bridge works alo
 
 To check the controller works, press `Win+R`, type `joy.cpl`, select the Xbox 360 controller and click *Properties*, then move the SpaceMouse.
 
-Command-line options for `python spacemouse_bridge.py`:
+## Rebinding controls inside a game
+
+A game's "press a key to bind" screen often fails with a SpaceMouse. It catches several inputs at once, or it catches the SpaceMouse's own raw signal instead of the virtual controller. There are two fixes:
+
+**1. Bind helper (recommended).** Close the bridge and start **`run_bind_helper.bat`**. It sends one clean input at a time while the SpaceMouse is ignored:
+
+1. In the game, open the binding screen and get to the point just before clicking the action.
+2. In the helper window, type what to send, for example `A`, `lx+` (left stick right), `ry-` (right stick down), `rt` (right trigger) or `key:W`, then press Enter.
+3. Switch to the game and click the action to bind. The helper waits 5 seconds, then sends the input.
+4. Press Enter again in the helper to repeat the same input, or type the next one.
+
+Afterwards, start the bridge again and map the SpaceMouse to those same controller inputs in `config.json`. Use `--bind-delay 8` if you need more time to switch windows.
+
+**2. Skip the game's binding screen.** Leave the game on its default controller layout, and change `config.json` so each SpaceMouse movement and button sends what the game already expects.
+
+If the game also reacts to the SpaceMouse directly, turn the SpaceMouse off in the game's settings or set 3DxWare to do nothing for that game. Otherwise the game gets two inputs for every movement.
+
+## Command-line options
+
+Options for `python spacemouse_bridge.py`:
 
 | Option | What it does |
 |---|---|
@@ -50,6 +69,9 @@ Command-line options for `python spacemouse_bridge.py`:
 | `--config FILE` | Use another settings file |
 | `--quiet` | No live status line |
 | `--list-keys` | Print every key name you can use |
+| `--bind` | Bind helper (see above) |
+| `--bind-delay N` | Seconds to switch to the game before the input is sent (default 5) |
+| `--bind-hold N` | Seconds the input is held (default 0.5) |
 
 ## Settings (`config.json`)
 
